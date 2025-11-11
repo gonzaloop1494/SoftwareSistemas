@@ -21,42 +21,48 @@
 // por cada búsqueda de una cadena de texto en un fichero (esto es, por cada par path-cadena)
 
 int
-main (int argc, char *argv[]) {
-    argc -= 1;
-    argv += 1;
+main (int argc, char *argv[])
+{
+  argc -= 1;
+  argv += 1;
 
-    int i;
-    int sts;
+  int i;
+  int sts;
 
-    //Si no se proporcionan argumentos o se proporciona un número impar de argumentos, se debe considerar un error
-    if ((argc == 0) || (argc % 2 != 0)) {
-        printf("error: bad number of arguments\n");
-        exit(EXIT_FAILURE);
+  //Si no se proporcionan argumentos o se proporciona un número impar de argumentos, se debe considerar un error
+  if ((argc == 0) || (argc % 2 != 0))
+    {
+      printf ("error: bad number of arguments\n");
+      exit (EXIT_FAILURE);
     }
-    // Una vez comprobada la correcta inserción de argumentos en la línea de comandos
-    // Dejamos de tener en cuenta el argv[0] -> nombre de programa
+  // Una vez comprobada la correcta inserción de argumentos en la línea de comandos
+  // Dejamos de tener en cuenta el argv[0] -> nombre de programa
 
-    
 
-    //Recorremos los argumentos que se introducen
-    // Vamos saltando argumentos de dos en dos, ya que son path-cadena
-    for (i = 0; i < argc; i+=2) {
-       switch(fork()){ 
-            case -1:
-                printf("fork failed\n");
-                exit(EXIT_FAILURE);
-            case 0:
-                execl("/bin/fgrep", "fgrep", argv[i+1], argv[i], NULL);
-                printf("exec failed\n");
-                exit(EXIT_FAILURE);
-       } 
+
+  //Recorremos los argumentos que se introducen
+  // Vamos saltando argumentos de dos en dos, ya que son path-cadena
+  for (i = 0; i < argc; i += 2)
+    {
+      switch (fork ())
+	{
+	case -1:
+	  printf ("fork failed\n");
+	  exit (EXIT_FAILURE);
+	case 0:
+	  execl ("/bin/fgrep", "fgrep", argv[i + 1], argv[i], NULL);
+	  printf ("exec failed\n");
+	  exit (EXIT_FAILURE);
+	}
     }
-    // Espero los procesos de los hijos
-    for (i = 0; i < argc; i += 2) {
-        if (wait(&sts) < 0) {
-            printf("wait failed\n");
-            exit(EXIT_FAILURE);
-        }
+  // Espero los procesos de los hijos
+  for (i = 0; i < argc; i += 2)
+    {
+      if (wait (&sts) < 0)
+	{
+	  printf ("wait failed\n");
+	  exit (EXIT_FAILURE);
+	}
     }
-    exit(EXIT_SUCCESS);
+  exit (EXIT_SUCCESS);
 }
