@@ -3,6 +3,8 @@
 #include <err.h>
 #include <fcntl.h>
 #include <unistd.h>
+
+enum{Bufsize = 8*1024}; 
 int
 main (int argc, char *argv[]) {
 
