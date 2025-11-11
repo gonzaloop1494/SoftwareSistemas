@@ -47,6 +47,7 @@ write_file(int fd, char *buffer, int len) {
     return total;
 }
 
+enum {Bufsize = 8*1024};
 
 int
 main (int argc, char *argv[]) {
@@ -68,6 +69,7 @@ main (int argc, char *argv[]) {
     }
 
     nbytes = strtol(argv[1], &end, base_decimal);
+
     if (end == argv[1] || (*end != '\0')) {
         errx(EXIT_FAILURE, "no digits have been found\n");
     }
@@ -92,9 +94,9 @@ main (int argc, char *argv[]) {
 
     nr = read_file(fdin, buffer);
     close(fdin);
+    byteswritten = nbytes;
 
     while (nr >= nbytes) {
-
         snprintf(filenameout, 256, "%03d%s", nfich, argv[2]);
         nfich++;
         fdout = open(filenameout, O_WRONLY | O_CREAT | O_TRUNC, 0666);
