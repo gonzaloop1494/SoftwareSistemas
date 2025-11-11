@@ -24,7 +24,7 @@ main (int argc, char *argv[]) {
         errx(EXIT_FAILURE, "Usage: %s N file", argv[0]);
     }
 
-    nbytes = strtol(argv[1], &end, base_decimal)
+    nbytes = strtol(argv[1], &end, base_decimal);
 
     if (end == argv[1] || (*end != '\0')) {
         errx(stderr, "no digits have been found\n");
@@ -40,7 +40,7 @@ main (int argc, char *argv[]) {
     }
 
     byteswritten = nbytes;
-    while ((nr = read(fd, buffer, Bufsize) != 0)) {
+    while ((nr = read(fdin, buffer, Bufsize) != 0)) {
         if (nr < 0) {
             err(EXIT_FAILURE, "read failed\n");
         }
