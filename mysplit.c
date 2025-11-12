@@ -3,8 +3,50 @@
 #include <err.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <string.h>
 
 enum{Bufsize = 8*1024}; 
+
+int
+read_file(int fd, char *buffer) {
+    int nr;
+    int total = 0;
+
+    while ((nr = read(fd, buffer + total, Bufsize - total)) > 0) {
+        total += nr;
+    }
+
+    if (nr < 0) {
+        close (fd);
+        err(EXIT_FAILURE, "read failed\n");
+    }
+
+    return total;
+}
+
+int
+write_file(int fd, char *buffer, int len) {
+    int total = 0;
+    int wb = 0;
+
+    while (total < len) {
+        wb = write(fd, buffer + total, len - total);
+
+        if (wb < 0) {
+            close(fd);
+            err(EXIT_FAILURE, "writing failed\n");
+        }
+
+        if (wb == 0) {
+            break;
+        }
+
+        total += wb;
+    }
+
+    return total;
+}
+
 int
 main (int argc, char *argv[]) {
 
@@ -15,17 +57,16 @@ main (int argc, char *argv[]) {
     int base_decimal = 10;
     int nfich = 0; //número/índice del fichero por el que voy leyendo
     int index = 0;
-    int byteswritten = 0;
-    char filenameout[256];
+    char *filenameout;
     int nr;
     char buffer[Bufsize];
+    char *bufferaux;
 
     if (argc != 3) {
         errx(EXIT_FAILURE, "Usage: %s N file", argv[0]);
     }
 
     nbytes = strtol(argv[1], &end, base_decimal);
-
     if (end == argv[1] || (*end != '\0')) {
         errx(EXIT_FAILURE, "no digits have been found\n");
     }
@@ -33,53 +74,65 @@ main (int argc, char *argv[]) {
         errx (EXIT_FAILURE, "error reading bytes given\n");
     }
 
-    fdin = open(argv[2], O_RDONLY);
+    filenameout = (char *) malloc((strlen(argv[2]) + 3) * sizeof(char) + 1);
+    if (!filenameout) {
+        errx (EXIT_FAILURE, "malloc failed\n");
+    }
 
+    bufferaux = (char *) malloc(nbytes * sizeof(char));
+    if (!bufferaux) {
+        errx (EXIT_FAILURE, "malloc failed\n");
+    }
+
+    fdin = open(argv[2], O_RDONLY);
     if (fdin < 0) {
         err(EXIT_FAILURE, "error open\n");
     }
 
-    byteswritten = nbytes;
-    while ((nr = read(fdin, buffer, Bufsize) != 0)) {
-        if (nr < 0) {
-            err(EXIT_FAILURE, "read failed\n");
+    nr = read_file(fdin, buffer);
+    close(fdin);
+
+    while (nr >= nbytes) {
+
+        snprintf(filenameout, 256, "%03d%s", nfich, argv[2]);
+        nfich++;
+        fdout = open(filenameout, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+        if (fdout < 0) {
+            err(EXIT_FAILURE, "%s: opening failed\n", filenameout);
         }
 
-        index = 0;
-        while (nr > 0){
+        memcpy(bufferaux, buffer + index, nbytes);
 
-            if (byteswritten == nbytes){// primera iteración
-                snprintf(filenameout, 256, "%03d%s", nfich, argv[2]);
-                nfich++;
-                fdout= open(filenameout, O_WRONLY | O_CREAT | O_TRUNC, 0664);
-                if (fdout < 0) {
-                    err(EXIT_FAILURE, "%s: opening failed\n", filenameout);
-                }
-            if (byteswritten <= nr) {
-                 if (write(fdout, &buffer[index], byteswritten) != byteswritten) {
-                    err(EXIT_FAILURE, "writing failed\n");
-                    close(fdout);
-                    index += byteswritten; 
-                    nr -= byteswritten;
-                    byteswritten = nbytes;
-                 } 
+        write_file(fdout, bufferaux, nbytes);
 
-            }
-            else
-            {
-                if (write(fdout, &buffer[index], nr) != nr) {
-                    err(EXIT_FAILURE, "writing failed\n");
-                }
-                byteswritten -= nr;
-                nr = 0;
-            }
-
-            } 
-
-        }
+        close(fdout);
+        bufferaux[0] = '\0';
+        filenameout[0] = '\0';
+        index += nbytes;
+        nr -= nbytes;
     }
 
-    close(fdin);
-    close(fdout);
+    if (nr != 0) {
+        snprintf(filenameout, 256, "%03d%s", nfich, argv[2]);
+        nfich++;
+        fdout = open(filenameout, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+        if (fdout < 0) {
+            err(EXIT_FAILURE, "%s: opening failed\n", filenameout);
+        }
+
+        memcpy(bufferaux, buffer + index, nr);
+
+        write_file(fdout, bufferaux, nr);
+
+        close(fdout);
+        bufferaux[0] = '\0';
+        filenameout[0] = '\0';
+        index += nr;
+        nr = 0;
+    }
+
+    free(bufferaux);
+    free(filenameout);
+
     exit(EXIT_SUCCESS);
 }
