@@ -27,7 +27,7 @@ main (int argc, char *argv[]) {
     nbytes = strtol(argv[1], &end, base_decimal);
 
     if (end == argv[1] || (*end != '\0')) {
-        errx(stderr, "no digits have been found\n");
+        errx(EXIT_FAILURE, "no digits have been found\n");
     }
     if (nbytes < 0) {
         errx (EXIT_FAILURE, "error reading bytes given\n");
