@@ -21,7 +21,7 @@ myls(char *dirname) {
         //printf("%s\n", entry ->d_name);
 
         //comprobamos el tipo de archivo
-        if (stat(entry->d_name,&st)) { 
+        if (stat(entry->d_name,&st)){ 
 			err(EXIT_FAILURE,"error stat");
         }
         
@@ -40,7 +40,7 @@ myls(char *dirname) {
 			t = 'o'; // Otro tipo de archivo
 
         // Imprimir información del archivo
-        printf("%c\t%ld\t%s\n", t, st.st_size, entry->d_name);
+        printf("%c\t%lld\t%s\n", t, st.st_size, entry->d_name);
 		
 		
 		
