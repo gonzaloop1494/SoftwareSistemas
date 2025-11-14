@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <err.h>
 #include <dirent.h>
-
+#include <sys/stat.h>
 
 
 void
@@ -10,39 +10,44 @@ myls(char *dirname) {
     DIR *d;
     struct dirent *entry;
     struct stat st;
+    char t; // Esta variable almacena el tipo de archivo
 
     d = opendir(dirname);
     if (d == NULL) {
         err(EXIT_FAILURE, "opendir failed");
     }
 
-    while((entry=readdir(d)) != NULL ) {
-        printf("%s\n", entry -> d_name);
-        if (stat(entry->d_ name,&st))
+    while((entry = readdir(d)) != NULL ) {
+        //printf("%s\n", entry ->d_name);
+
+        //comprobamos el tipo de archivo
+        if (stat(entry->d_ name,&st)) { 
 			err(EXIT_FAILURE,"error stat");
-		if (S_ISDIR(st.st_mode))
-			t='d';
-		else if (S_ISREG(st.st_mode))
-			t='f';
-		else if (IS_ISLNK(st.st_mode))
-			t='l';
+        }
+        
+
+        // Determinar el tipo de archivo
+		if (S_ISDIR(st.st_mode)) {
+			t = 'd'; //directorio
+        }
+		else if (S_ISREG(st.st_mode)) {
+			t = 'f'; //archivo regular
+        }
+		else if (S_ISLNK(st.st_mode)) {
+			t = 'l'; //enlace simbólico
+        }
 		else
-			t='o';
-    
+			t = 'o'; // Otro tipo de archivo
+
+        // Imprimir información del archivo
+        printf("%c\t%ld\t%s\n", t, st.st_size, entry->d_name);
 		
 		
 		
-	}
+    }
 		
 	closedir(d);
-
 }
-
-
-
-
-
-
 
 int 
 main(int argc, char *argv[]) {
