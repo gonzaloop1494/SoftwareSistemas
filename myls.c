@@ -21,7 +21,7 @@ myls(char *dirname) {
         //printf("%s\n", entry ->d_name);
 
         //comprobamos el tipo de archivo
-        if (stat(entry->d_ name,&st)) { 
+        if (stat(entry->d_name,&st)) { 
 			err(EXIT_FAILURE,"error stat");
         }
         
