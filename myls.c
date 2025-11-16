@@ -40,7 +40,7 @@ myls(char *dirname) {
 			t = 'o'; // Otro tipo de archivo
 
         // Imprimir información del archivo
-        printf("%c\t%lld\t%s\n", t, st.st_size, entry->d_name);
+        printf("%c\t%ld\t%s\n", t, st.st_size, entry->d_name);
 		
 		
 		
