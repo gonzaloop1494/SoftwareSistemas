@@ -1,0 +1,45 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <err.h>
+
+enum {
+    BUFFSIZE = 512
+};
+
+int 
+main (int argc, char *argv[]) {
+
+    FILE *f;
+    char buf[BUFFSIZE];
+    char maxline[BUFFSIZE];
+    int n = 0;
+    int max = -1;
+
+    if (argc != 2) {
+        fprintf(stderr, "usage: %s file\n", argv[0]);
+        exit(EXIT_FAILURE); 
+    }
+
+    f = fopen(argv[1], "r");
+    if (f==NULL)
+        err(EXIT_FAILURE, "%s: open error", argv[1]);
+
+    
+    while (fgets(buf,BUFFSIZE,f) != NULL) { //fgets lee una línea entera
+        n = 0;
+        while (buf[n] == '\t') {
+            n++;
+        }
+        if (n >= max) {
+            max = n;
+            strncpy(maxline, buf, BUFFSIZE);
+        }
+    }
+
+    if (max != -1) {
+        printf("%d:%s", max, maxline); // Solo imprimimos si encontramos algo (max != -1)
+    }
+    fclose(f);
+    exit(EXIT_SUCCESS);
+}
