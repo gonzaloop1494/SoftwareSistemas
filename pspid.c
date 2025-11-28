@@ -32,19 +32,26 @@ void check_pid_in_ps_output(int pipe_fd, const char *pid_to_check) {
     }
 
     // Leer línea por línea de la salida de ps
-    while ((fgets(buf, Bufsize, fp) != NULL) && (exit_status)) {
-        tokenize(buf, tokens, " ", MAXTOKENS);
-        if (strcmp(tokens[1], pid_to_check) == 0) {
-            exit_status = 0; // PID encontrado
+    while (fgets(buf, Bufsize, fp) != NULL) {
+        // Tokenizar la línea
+        int token_count = tokenize(buf, tokens, " \t", MAXTOKENS); // Usar espacio y tabulación como delimitadores
+
+        // Asegurarse de que haya suficientes tokens para comparar
+        if (token_count > 1) {
+            // Comparar el PID (debería estar en la segunda columna)
+            if (strcmp(tokens[1], pid_to_check) == 0) {
+                exit_status = 0; // PID encontrado
+                break;  // Salir del bucle si el PID es encontrado
+            }
         }
     }
+
     fclose(fp);
-    exit(exit_status); // Salir con éxito o error
+    exit(exit_status); // Salir con éxito (0) o error (1)
 }
 
 int main(int argc, char *argv[]) {
     int p[2]; // Pipe para comunicación entre procesos
-    //int exit_status;
 
     // Control de errores
     if (argc != 2) {
