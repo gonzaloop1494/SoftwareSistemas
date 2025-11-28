@@ -44,7 +44,7 @@ void check_pid_in_ps_output(int pipe_fd, const char *pid_to_check) {
 
 int main(int argc, char *argv[]) {
     int p[2]; // Pipe para comunicación entre procesos
-    int exit_status;
+    //int exit_status;
 
     // Control de errores
     if (argc != 2) {
