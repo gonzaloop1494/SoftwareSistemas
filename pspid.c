@@ -7,10 +7,11 @@
 
 enum { Bufsize = 512, MAXTOKENS = 32 };
 
+// Función para tokenizar la línea de la salida de ps
 int tokenize(char *str, char *tokens[], char *delim, int max) {
     int i = 0;
     char *p;
-    
+
     while (((p = strtok_r(str, delim, &str)) != NULL) && (i < max)) {
         tokens[i] = p;
         i++;
@@ -31,15 +32,31 @@ void check_pid_in_ps_output(int pipe_fd, const char *pid_to_check) {
         err(EXIT_FAILURE, "fdopen failed");
     }
 
+    // Variable para controlar si ya hemos procesado la cabecera
+    int header_skipped = 0;
+
     // Leer línea por línea de la salida de ps
     while (fgets(buf, Bufsize, fp) != NULL) {
-        // Tokenizar la línea
-        int token_count = tokenize(buf, tokens, " \t", MAXTOKENS); // Usar espacio y tabulación como delimitadores
+        // Si es la cabecera (primera línea), la ignoramos
+        if (!header_skipped) {
+            header_skipped = 1;
+            continue;
+        }
 
-        // Asegurarse de que haya suficientes tokens para comparar
+        // Tokenizar la línea (separar por espacios y tabulaciones)
+        int token_count = tokenize(buf, tokens, " \t", MAXTOKENS);
+
+        // Asegurarse de que haya suficientes tokens para comparar (al menos 2: PID y otros campos)
         if (token_count > 1) {
+            // Limpiar posibles espacios al principio y final de la cadena (trim)
+            char *pid = tokens[1];
+            while (isspace((unsigned char)*pid)) pid++; // Eliminar espacios a la izquierda
+            char *end = pid + strlen(pid) - 1;
+            while (end > pid && isspace((unsigned char)*end)) end--; // Eliminar espacios a la derecha
+            *(end + 1) = '\0'; // Terminar la cadena correctamente
+
             // Comparar el PID (debería estar en la segunda columna)
-            if (strcmp(tokens[1], pid_to_check) == 0) {
+            if (strcmp(pid, pid_to_check) == 0) {
                 exit_status = 0; // PID encontrado
                 break;  // Salir del bucle si el PID es encontrado
             }
