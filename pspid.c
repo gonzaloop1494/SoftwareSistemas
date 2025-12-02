@@ -30,7 +30,7 @@ int
 main(int argc, char *argv[]) {
 
     int p[2]; //creo el pipe
-    char buf(Bufsize);
+    char buf[Bufsize];
     FILE *fp;
     char *tokens[MAXTOKENS];
     int exit_status;
@@ -68,7 +68,9 @@ main(int argc, char *argv[]) {
 				tokenize(buf,tokens," ",MAXTOKENS);
 				if (strcmp(tokens[1],argv[1])==0)
 					exit_status=0;
-			}
+			    } else {
+                    exit_status = -1;
+                }
 			fclose(fp);
 			exit(exit_status);
 
