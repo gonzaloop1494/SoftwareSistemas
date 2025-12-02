@@ -63,7 +63,7 @@ main(int argc, char *argv[]) {
 			fp=fdopen(p[0],"r");
 			if (fp==NULL)
 				err(EXIT_FAILURE,"fdopen failed");
-			exit_status=-1;
+			exit_status=1;
 			while((fgets(buf,Bufsize,fp)!=NULL) && (exit_status))
 			{
 				tokenize(buf,tokens," \t",MAXTOKENS);
@@ -72,7 +72,7 @@ main(int argc, char *argv[]) {
                     exit_status=0;
                     break;
 			    } else {
-                    exit_status = -1;
+                    exit_status = 1;
                     break;
                 }
 			
