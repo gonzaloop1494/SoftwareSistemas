@@ -1,95 +1,85 @@
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 #include <err.h>
-#include <unistd.h> 
 #include <sys/wait.h>
 #include <string.h>
 
-enum {Bufsize = 512, MAXTOKENS=32};
+enum { BUF = 512, MAXTOK = 32 };
 
-
-
-int
-tokenize(char *str,char *tokens[],char *delim,int max)
+int tokenize(char *str, char *tokens[], char *delim, int max)
 {
-	int i=0;
-	char *p;
-	
-	while (((p=strtok_r(str,delim,&str)) !=NULL) && (i<max))
-	{
-		tokens[i]=p;
-		i++;
-		
-	}
-	return i;
+    int i = 0;
+    char *p;
+
+    while ((p = strtok_r(str, delim, &str)) != NULL && i < max) {
+        tokens[i++] = p;
+    }
+    return i;
 }
 
-
-
-
-int
-main(int argc, char *argv[]) {
-
-    int p[2]; //creo el pipe
-    char buf[Bufsize];
+int main(int argc, char *argv[])
+{
+    int p[2];
+    char buf[BUF];
     FILE *fp;
-    char *tokens[MAXTOKENS];
-    int exit_status = -1;
+    char *tokens[MAXTOK];
 
-    // Control de errores
-    if (argc != 2) {
+    if (argc != 2)
         errx(EXIT_FAILURE, "Usage: %s pid", argv[0]);
-    }
-    pipe(p);
-    switch(fork()) {
 
-        case -1:
-            err(EXIT_FAILURE, "fork failed");
-        
-        case 0: //hijo que ejecuta el comando ps con los parámetros aux
-        dup2(p[1], 1);
-        close(p[0]);
-        close(p[1]);
-        execl("/usr/bin/ps", "ps", "aux", NULL);
-        err(EXIT_FAILURE, "exec failed");
-    }
+    if (pipe(p) == -1)
+        err(EXIT_FAILURE, "pipe failed");
 
-    switch(fork()) {
+    /* ----- Primer hijo: ejecuta ps aux ----- */
+    switch (fork()) {
         case -1:
             err(EXIT_FAILURE, "fork failed");
 
         case 0:
-            close(p[1]);
-			fp=fdopen(p[0],"r");
-			if (fp==NULL)
-				err(EXIT_FAILURE,"fdopen failed");
-			exit_status=1;
-			while((fgets(buf,Bufsize,fp)!=NULL) && (exit_status))
-			{
-				tokenize(buf,tokens," \t",MAXTOKENS);
-				if (strcmp(tokens[1],argv[1])==0) {
-					fprintf(stderr, "xxx");
-                    exit_status=0;
-                    break;
-			    } else {
-                    exit_status = 1;
-                    break;
-                }
-			
-            }
-            fclose(fp);
-			exit(exit_status);
-
-
+            dup2(p[1], 1);      // stdout → pipe
+            close(p[0]);        // cerrar lectura
+            close(p[1]);        // cerrar escritura después de dup2
+            execl("/usr/bin/ps", "ps", "aux", NULL);
+            err(EXIT_FAILURE, "exec failed");
     }
 
-    
+    /* ----- Segundo hijo: analiza la salida de ps ----- */
+    switch (fork()) {
+        case -1:
+            err(EXIT_FAILURE, "fork failed");
 
+        case 0:
+            close(p[1]);        // no escribe
+            fp = fdopen(p[0], "r");
+            if (fp == NULL)
+                err(EXIT_FAILURE, "fdopen failed");
 
+            while (fgets(buf, BUF, fp) != NULL) {
+                tokenize(buf, tokens, " \t", MAXTOK);
+
+                /* tokens[1] es el PID en ps aux */
+                if (tokens[1] && strcmp(tokens[1], argv[1]) == 0) {
+                    fclose(fp);
+                    exit(0);    // encontrado → éxito
+                }
+            }
+
+            fclose(fp);
+            exit(1);            // no encontrado → fallo
+    }
+
+    /* ----- Padre ----- */
     close(p[0]);
-	close(p[1]);
-	wait(NULL);
-	wait(NULL);
-    exit(EXIT_SUCCESS);
+    close(p[1]);
 
+    int status_ps, status_checker;
+
+    wait(&status_ps);     // esperar hijo ps
+    wait(&status_checker);// esperar hijo lector
+
+    if (WIFEXITED(status_checker))
+        exit(WEXITSTATUS(status_checker));
+
+    exit(EXIT_FAILURE);   // por seguridad
 }
