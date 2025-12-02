@@ -3,6 +3,7 @@
 #include <err.h>
 #include <unistd.h> 
 #include <sys/wait.h>
+#include <string.h>
 
 enum {Bufsize = 512, MAXTOKENS=32};
 
