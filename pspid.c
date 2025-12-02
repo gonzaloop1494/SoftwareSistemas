@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
             while (fgets(buf, BUF, fp) != NULL) {
                 tokenize(buf, tokens, " \t", MAXTOK);
 
-                /* Asegúrate de que la segunda columna contiene el PID */
+                // Asegúrate de que la segunda columna contiene el PID
                 if (tokens[1] && strcmp(tokens[1], argv[1]) == 0) {
                     fclose(fp);
                     exit(0);    // encontrado → éxito
