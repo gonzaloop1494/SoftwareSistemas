@@ -34,7 +34,7 @@ main(int argc, char *argv[]) {
     char buf[Bufsize];
     FILE *fp;
     char *tokens[MAXTOKENS];
-    int exit_status;
+    int exit_status = -1;
 
     // Control de errores
     if (argc != 2) {
@@ -63,16 +63,21 @@ main(int argc, char *argv[]) {
 			fp=fdopen(p[0],"r");
 			if (fp==NULL)
 				err(EXIT_FAILURE,"fdopen failed");
-			exit_status=1;
+			exit_status=-1;
 			while((fgets(buf,Bufsize,fp)!=NULL) && (exit_status))
 			{
 				tokenize(buf,tokens," \t",MAXTOKENS);
-				if (strcmp(tokens[1],argv[1])==0)
-					exit_status=0;
+				if (strcmp(tokens[1],argv[1])==0) {
+					fprintf(stderr, "xxx");
+                    exit_status=0;
+                    break;
 			    } else {
                     exit_status = -1;
+                    break;
                 }
-			fclose(fp);
+			
+            }
+            fclose(fp);
 			exit(exit_status);
 
 
