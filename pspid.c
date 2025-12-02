@@ -56,17 +56,21 @@ int main(int argc, char *argv[])
                 err(EXIT_FAILURE, "fdopen failed");
 
             while (fgets(buf, BUF, fp) != NULL) {
-                tokenize(buf, tokens, " \t", MAXTOK);
+                // Tokenizar la línea
+                int n_tokens = tokenize(buf, tokens, " \t", MAXTOK);
 
-                // Asegúrate de que la segunda columna contiene el PID
-                if (tokens[1] && strcmp(tokens[1], argv[1]) == 0) {
-                    fclose(fp);
-                    exit(0);    // encontrado → éxito
+                // Asegurarnos de que tenemos al menos 2 tokens (PID y comando)
+                if (n_tokens >= 2) {
+                    // Comparar el PID (tokens[1]) con el PID pasado como argumento
+                    if (strcmp(tokens[1], argv[1]) == 0) {
+                        fclose(fp);
+                        exit(0);    // PID encontrado → éxito
+                    }
                 }
             }
 
             fclose(fp);
-            exit(1);            // no encontrado → fallo
+            exit(1);            // No encontrado → fallo
     }
 
     /* ----- Padre ----- */
