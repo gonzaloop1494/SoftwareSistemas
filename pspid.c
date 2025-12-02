@@ -65,7 +65,7 @@ main(int argc, char *argv[]) {
 			exit_status=1;
 			while((fgets(buf,Bufsize,fp)!=NULL) && (exit_status))
 			{
-				tokenize(buf,tokens," ",MAXTOKENS);
+				tokenize(buf,tokens," \t",MAXTOKENS);
 				if (strcmp(tokens[1],argv[1])==0)
 					exit_status=0;
 			    } else {
