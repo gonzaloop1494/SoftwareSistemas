@@ -2,16 +2,20 @@
 
 # Comprobar número de argumentos
 if [ $# -eq 0 ]; then
-    echo "Uso: $0 file1 [file2 ...]" >&2
+    echo "Uso: $0 file1 [file2 ...fileN]" >&2
     exit 1
 fi
 
 # Validación de ficheros
-for f in "$@"; do
-    if [ ! -f "$f" ]; then
-        echo "Error: '$f' no existe o no es un fichero" >&2
-        exit 1
-    fi
+for f in "$@"
+do
+	if ! test -e "$f"; then
+		echo "Error: $f no existe" 1>&2
+		exit 1
+	elif ! test -f "$f"; then
+		echo "Error: $f no es un archivo regular" 1>&2
+		exit 1
+	fi
 done
 
 # Polling hasta que todos sean eliminados
