@@ -13,7 +13,7 @@ do
 		echo "Error: $f no existe" 1>&2
 		exit 1
 	elif ! test -f "$f"; then
-		echo "Error: $f no es un archivo regular" 1>&2
+		echo "Error: $f no es un fichero" 1>&2
 		exit 1
 	fi
 done
