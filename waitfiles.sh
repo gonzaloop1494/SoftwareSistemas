@@ -1,12 +1,12 @@
 #!/bin/sh
 
-# Comprobar número de argumentos
+
 if [ $# -eq 0 ]; then
     echo "Uso: $0 file1 [file2 ...fileN]" >&2
     exit 1
 fi
 
-# Validación de ficheros
+
 for f in "$@"
 do
 	if ! test -e "$f"; then
@@ -18,7 +18,7 @@ do
 	fi
 done
 
-# Polling hasta que todos sean eliminados
+
 while true; do
     all_deleted=1
 
