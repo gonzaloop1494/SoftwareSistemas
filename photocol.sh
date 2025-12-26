@@ -1,106 +1,142 @@
 #!/bin/sh
 
-if test $# -lt 2
-then
-    echo "$0 collection dir1 [dir2 ... dirN]" 1>&2
+# ==============================================================================
+# photocol.sh - Generador de colección de fotos
+# Metodología: GSYC (Sistemas Operativos)
+# ==============================================================================
+
+# 1. Validación de argumentos
+# Se requieren al menos 2 argumentos: directorio colección y al menos 1 fuente.
+if [ $# -lt 2 ]; then
+    echo "Uso: $0 <directorio_coleccion> <dir_fotos1> [dir_fotos2 ...]" >&2
     exit 1
 fi
 
-collection="$1"
-shift
+COLLECTION="$1"
+shift # Desplaza los argumentos para que $@ contenga solo los directorios fuente
 
-# Preparación del directorio colección
-if ! test -d "$collection"
-then
-    mkdir -p "$collection"
-else
-    # Usamos ls -A para ver si hay algo (incluso ocultos) y evitar errores si está vacío
-    if test -n "$(ls -A "$collection" 2>/dev/null)"
-    then
-        rm -rf "$collection"/*
-    fi
-fi
-
-# Verificación de directorios origen
-for d in "$@"
-do
-    if ! test -d "$d"
-    then
-        echo "$d no dir" 1>&2
+# 2. Validación de directorios fuente
+# Recorremos los argumentos restantes para asegurar que existen.
+for dir in "$@"; do
+    if [ ! -d "$dir" ]; then
+        echo "Error: El directorio '$dir' no existe." >&2
         exit 1
     fi
 done
 
-tmp=$(mktemp)
-tmpmeta=$(mktemp)
+# 3. Preparación del directorio de la colección
+# Si existe, borramos contenido. Si no, lo creamos.
+if [ -d "$COLLECTION" ]; then
+    # Usamos rm -rf sobre el contenido, ocultos incluidos si los hubiera.
+    rm -rf "$COLLECTION"/* 2>/dev/null
+else
+    mkdir -p "$COLLECTION"
+fi
 
-# Búsqueda corregida: comillas y paréntesis
-for d in "$@"
-do
-    find "$d" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.tiff" \)
-done > "$tmp"
+# Fichero temporal para detectar errores dentro del subshell del pipe
+ERROR_FILE="$COLLECTION/.fatal_error"
 
-# Función de limpieza por error
-die() {
-    echo "Error: $1" >&2
-    rm -rf "$collection"/*
-    rm -f "$tmp" "$tmpmeta"
+# 4. Búsqueda y Procesamiento (Pipeline Principal)
+# Usamos 'find' para buscar recursivamente en todos los directorios pasados ($@).
+# Filtramos por extensiones (case-insensitive) usando -name con OR.
+find "$@" -type f \( \
+    -name "*.[jJ][pP][gG]" -o -name "*.[jJ][pP][eE][gG]" -o \
+    -name "*.[pP][nN][gG]" -o \
+    -name "*.[tT][iI][fF][fF]" \
+\) -print | while read -r filepath; do
+
+    # --- Extracción de partes del path ---
+    # Obtenemos el nombre del directorio padre (última componente del path)
+    parent_dir=$(dirname "$filepath")
+    parent_name=$(basename "$parent_dir")
+    
+    # Obtenemos el nombre del fichero original
+    original_name=$(basename "$filepath")
+
+    # --- Normalización de la extensión ---
+    # Usamos case para determinar la extensión correcta según el enunciado.
+    case "$original_name" in
+        *.[jJ][pP][gG]|*.[jJ][pP][eE][gG])
+            ext=".jpg"
+            ;;
+        *.[pP][nN][gG])
+            ext=".png"
+            ;;
+        *.[tT][iI][fF][fF])
+            ext=".tiff"
+            ;;
+        *)
+            # Si se coló algo raro (improbable por el find), saltamos
+            continue
+            ;;
+    esac
+
+    # --- Normalización del nombre ---
+    # 1. Quitamos la extensión original.
+    #    La expansión ${var%.*} elimina desde el último punto hacia el final.
+    name_no_ext="${original_name%.*}"
+
+    # 2. Convertimos el nombre del fichero a minúsculas.
+    lower_name=$(echo "$name_no_ext" | tr 'A-Z' 'a-z')
+
+    # 3. Construimos el nombre candidato (con espacios aún).
+    candidate="${parent_name}_${lower_name}${ext}"
+
+    # 4. Sustituimos espacios por guiones en el nombre FINAL completo.
+    final_name=$(echo "$candidate" | tr ' ' '-')
+
+    # --- Detección de Colisiones ---
+    target_path="$COLLECTION/$final_name"
+    
+    if [ -e "$target_path" ]; then
+        echo "Error: Colisión detectada para el fichero '$final_name'." >&2
+        touch "$ERROR_FILE"
+        break # Salimos del bucle while
+    fi
+
+    # --- Copia del fichero ---
+    cp "$filepath" "$target_path"
+
+done
+
+# 5. Verificación de errores post-bucle
+# Como el while se ejecuta en un subshell (por el pipe), las variables
+# no persisten. Comprobamos si se creó el fichero de error.
+if [ -f "$ERROR_FILE" ]; then
+    rm -f "$ERROR_FILE"
+    # El enunciado dice: "dejando el directorio de la colección vacío"
+    rm -rf "$COLLECTION"/*
     exit 1
-}
+fi
 
-while IFS= read -r line
-do
-    # 1. Obtener nombre base del fichero
-    filename_orig=$(basename "$line")
-    
-    # 2. Obtener extensión y nombre sin extensión
-    # La sintaxis ${var##*.} es estándar en sh/bash para extensiones, pero usaremos sed por compatibilidad básica
-    ext=$(echo "$filename_orig" | sed -E 's/.*\.([a-zA-Z0-9]+)$/\1/' | tr '[:upper:]' '[:lower:]')
-    name_no_ext=$(echo "$filename_orig" | sed -E 's/(.*)\.[a-zA-Z0-9]+$/\1/')
+# 6. Generación de Metadata (Filtros de texto)
+# Requisito: Nombre y tamaño, ordenado por tamaño, y total al final.
+# Entramos al directorio para que ls nos de nombres limpios sin ruta.
+cd "$COLLECTION" || exit 1
 
-    # 3. Obtener nombre del directorio padre
-    dir_path=$(dirname "$line")
-    dir_name=$(basename "$dir_path")
+# Explicación del pipeline:
+# 1. ls -l: Lista ficheros con detalles (tamaño suele ser columna 5).
+# 2. awk: Filtra la línea 'total' de ls, e imprime "Nombre Tamaño".
+#    NOTA: Usamos awk para reordenar porque ls -l da el tamaño antes del nombre.
+# 3. sort: Ordena numéricamente (-n) por la segunda columna (tamaño) (-k2).
+# 4. Redirigimos a un temporal para calcular el total después sin ensuciar la lectura.
 
-    # 4. Normalizar nombres (espacios -> guiones, todo minúsculas)
-    # NOTA: El enunciado pide espacios -> guiones (-), no guiones bajos (_)
-    clean_dir=$(echo "$dir_name" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
-    clean_name=$(echo "$name_no_ext" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
+ls -l | grep -v "^total" | awk '{print $9, $5}' | sort -n -k2 > metadata.txt
 
-    # 5. Normalizar extensión jpeg -> jpg
-    if test "$ext" = "jpeg"
-    then
-        ext="jpg"
-    fi
+# Calculamos el total usando awk sobre el fichero ya generado y lo añadimos.
+# Usamos cat para alimentar a awk (estilo clásico de filtros).
+cat metadata.txt | awk '
+    {
+        sum += $2;      # Sumamos la segunda columna (tamaño)
+        print $0;       # Imprimimos la línea tal cual (ya está ordenada)
+    }
+    END {
+        print "TOTAL:", sum, "bytes"
+    }
+' > metadata.final
 
-    # 6. Construir nombre final: DIRECTORIO_FICHERO.EXT
-    newfile="${clean_dir}_${clean_name}.${ext}"
-    dest_path="$collection/$newfile"
+# Reemplazamos el metadata.txt con la versión final (con el total)
+mv metadata.final metadata.txt
 
-    # 7. DETECTAR COLISIÓN
-    if test -e "$dest_path"
-    then
-        die "Colisión detectada: $newfile ya existe."
-    fi
-    
-    # Copiar
-    cp "$line" "$dest_path"
-    
-    # Obtener tamaño (stat es mejor, pero ls -l awk suele funcionar)
-    # En Linux estándar:
-    size=$(stat -c%s "$dest_path")
-    # Si no tienes stat, tu método ls -l funciona casi siempre:
-    # size=$(ls -l "$dest_path" | awk '{print $5}')
-    
-    echo "$newfile $size" >> "$tmpmeta"
-    
-done < "$tmp"
-
-# Ordenar metadata
-sort -k2 -n "$tmpmeta" > "$collection"/metadata.txt
-
-# Calcular total
-awk '{s=s+$2} END{print "TOTAL: "s " bytes"}' "$tmpmeta" >> "$collection"/metadata.txt
-
-# Limpieza
-rm -f "$tmp" "$tmpmeta"
+# Salimos con éxito (sin output por pantalla)
+exit 0
