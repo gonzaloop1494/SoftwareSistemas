@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # ==============================================================================
-# photocol.sh - Solución optimizada (Estilo Soriano/Guardiola)
+# photocol.sh - Solución corregida
 # ==============================================================================
 
 if [ $# -lt 2 ]; then
@@ -27,15 +27,11 @@ else
     mkdir -p "$COLLECTION"
 fi
 
-# Ficheros temporales (usamos mktemp para seguridad, muy estilo Soriano)
-# OPS_FILE guardará: "RutaOrigen|NombreDestino"
 OPS_FILE=$(mktemp)
-# ERR_FILE para comunicación entre subshell y proceso padre
 ERR_FILE=$(mktemp)
 
 # ==============================================================================
 # FASE 1: PLANIFICACIÓN (Map)
-# Buscamos y calculamos nombres, pero NO copiamos todavía.
 # ==============================================================================
 
 find "$@" -type f \( \
@@ -53,26 +49,37 @@ find "$@" -type f \( \
         *.[jJ][pP][gG]|*.[jJ][pP][eE][gG]) ext=".jpg" ;;
         *.[pP][nN][gG])                    ext=".png" ;;
         *.[tT][iI][fF][fF])                ext=".tiff" ;;
-        *) continue ;; # Por seguridad
+        *) continue ;; 
     esac
 
     # Normalización de nombre
     name_no_ext="${original_name%.*}"
     lower_name=$(echo "$name_no_ext" | tr 'A-Z' 'a-z')
-    candidate="${parent_name}_${lower_name}${ext}"
+
+    # --- CORRECCIÓN AQUÍ ---
+    # Discriminamos: ¿Es nombre genérico (empieza por img) o descriptivo?
+    case "$lower_name" in
+        img*)
+            # Es genérico (ej: img01), añadimos el prefijo de la carpeta
+            candidate="${parent_name}_${lower_name}${ext}"
+            ;;
+        *)
+            # Es descriptivo (ej: verano_playa), lo dejamos tal cual
+            candidate="${lower_name}${ext}"
+            ;;
+    esac
+    # -----------------------
+
     final_name=$(echo "$candidate" | tr ' ' '-')
 
-    # Guardamos la operación en el fichero temporal usando un separador seguro (|)
     echo "${filepath}|${final_name}" >> "$OPS_FILE"
 
 done
 
 # ==============================================================================
-# FASE 2: DETECCIÓN DE COLISIONES (Reduce/Validate)
+# FASE 2: DETECCIÓN DE COLISIONES
 # ==============================================================================
 
-# Extraemos solo los nombres de destino ($2), ordenamos y buscamos duplicados (-d)
-# Si 'uniq -d' saca algo, es que hay colisión.
 collisions=$(cut -d'|' -f2 "$OPS_FILE" | sort | uniq -d)
 
 if [ -n "$collisions" ]; then
@@ -84,10 +91,9 @@ if [ -n "$collisions" ]; then
 fi
 
 # ==============================================================================
-# FASE 3: EJECUCIÓN (Execute)
+# FASE 3: EJECUCIÓN
 # ==============================================================================
 
-# Leemos el fichero de operaciones. IFS=| permite leer origen y destino
 while IFS='|' read -r src dst; do
     cp "$src" "$COLLECTION/$dst"
 done < "$OPS_FILE"
@@ -100,17 +106,10 @@ rm -f "$OPS_FILE" "$ERR_FILE"
 
 cd "$COLLECTION" || exit 1
 
-# CORRECCIÓN CLAVE:
-# 1. Usamos un fichero temporal fuera del pipe para evitar leerlo mientras escribimos.
-# 2. ls -l puede variar según el sistema. Una forma más robusta en POSIX puro para
-#    obtener tamaño y nombre es un poco compleja, pero usaremos ls -l asumiendo Linux.
-#    Importante: awk '{print $9, $5}' asume columna 9=nombre, 5=tamaño.
-#    Lo mandamos a un temporal PRIMERO.
-
-# Modificación: Añadimos | grep -v "metadata" este es el cambio
+# Usamos ls -l asumiendo Linux estándar (col 5=size, col 9=name)
+# El enunciado ordena por TAMAÑO (columna 2 del awk resultante), no por nombre.
 ls -l | grep -v "^total" | grep -v "metadata" | awk '{print $9, $5}' | sort -k2 -n > metadata.tmp
 
-# Calculamos el total y formateamos la salida final
 awk '
     {
         sum += $2
