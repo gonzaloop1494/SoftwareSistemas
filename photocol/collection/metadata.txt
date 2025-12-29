@@ -1,10 +1,10 @@
-metadata.txt 0
-verano_gala.png 0
+metadata.tmp 0
 d2_img04.tiff 32
-d1_img01.jpg 36
-d1_img04.jpg 46
-d1_img02.jpg 67
 verano_playa.png 119
+d1_img02.jpg 168
+d1_img01.jpg 178
 verano_avion.png 182
 d2_img01.jpg 194
-TOTAL: 676 bytes
+d1_img04.jpg 265
+verano_cena-de-gala.png 301
+TOTAL: 1439 bytes
