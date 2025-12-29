@@ -113,17 +113,17 @@ rm -f "$OPS_FILE"
 
 cd "$COLLECTION" || exit 1
 
-# El formato debe ser: NOMBRE TAMAÑO
-# Ordenado por tamaño (creciente)
-# ls -l muestra: ... tamaño ... nombre
-# Asumimos 'ls -l' estándar de Linux donde col 5 es tamaño y col 9 es nombre.
-# IMPORTANTE: Filtramos "metadata.txt" para que no salga en su propia lista si se crea antes.
+# CORRECCIÓN: Usamos ficheros temporales en /tmp con mktemp.
+# Al estar fuera de la carpeta, 'ls -l' NO los verá y no saldrán en la lista.
+META_TMP=$(mktemp)
+META_SORTED=$(mktemp)
 
 # 1. Generamos lista cruda: Nombre Tamaño (invertimos columnas de ls)
-ls -l | grep -v "^total" | grep -v "metadata.txt" | awk '{print $9, $5}' > metadata.tmp
+# Filtramos "metadata.txt" por si acaso se hubiera creado antes.
+ls -l | grep -v "^total" | grep -v "metadata.txt" | awk '{print $9, $5}' > "$META_TMP"
 
 # 2. Ordenamos por tamaño (columna 2), numérico (-n)
-sort -k2 -n metadata.tmp > metadata.sorted
+sort -k2 -n "$META_TMP" > "$META_SORTED"
 
 # 3. Calculamos total y generamos fichero final
 awk '
@@ -134,10 +134,10 @@ awk '
     END {
         print "TOTAL:", sum, "bytes"
     }
-' metadata.sorted > metadata.txt
+' "$META_SORTED" > metadata.txt
 
-# Limpieza final
-rm -f metadata.tmp metadata.sorted
+# Limpieza final de los temporales del sistema
+rm -f "$META_TMP" "$META_SORTED"
 
-# Si ejecuta con éxito, no escribe nada (exit 0 implícito)
+# Salida limpia (sin mensajes)
 exit 0
