@@ -107,7 +107,8 @@ cd "$COLLECTION" || exit 1
 #    Importante: awk '{print $9, $5}' asume columna 9=nombre, 5=tamaño.
 #    Lo mandamos a un temporal PRIMERO.
 
-ls -l | grep -v "^total" | awk '{print $9, $5}' | sort -k2 -n > metadata.tmp
+# Modificación: Añadimos | grep -v "metadata" este es el cambio
+ls -l | grep -v "^total" | grep -v "metadata" | awk '{print $9, $5}' | sort -k2 -n > metadata.tmp
 
 # Calculamos el total y formateamos la salida final
 awk '
